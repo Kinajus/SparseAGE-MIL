@@ -1,0 +1,83 @@
+name: nsclc_sparseage_multitask
+task: multitask
+
+data:
+  manifest: data/manifests/nsclc_multitask.csv
+  root: .
+  id_column: slide_id
+  feature_column: feature_path
+
+  # Optional if coords/clusters are not already stored inside each .pt feature dict.
+  coordinate_column: coord_path
+  cluster_column: cluster_path
+
+  subtype_label_column: subtype
+  stage_label_column: stage
+  event_time_column: event_time
+  event_observed_column: event_observed
+  survival_bin_column: survival_bin
+  # Fit survival bins on training folds only, then apply the same edges to
+  # validation/external slides to avoid discretization leakage. Set to false
+  # only if survival_bin was precomputed in a leakage-free way.
+  fit_survival_bins: true
+  overwrite_survival_bins: false
+
+  # If no topology columns/file are provided, the dataset computes a lightweight
+  # descriptor from coords + pseudo-clusters for auxiliary topology supervision.
+  compute_topology_target: true
+
+split:
+  fold_column: fold
+  fold: 0
+  n_splits: 5
+  stratify_column: subtype
+
+model:
+  input_dim: 1024
+  embedding_dim: 512
+  attention_dim: 128
+  dropout: 0.25
+
+  tasks: [subtype, stage, survival]
+  subtype_classes: 2
+  stage_classes: 4
+  survival_bins: 4
+  topology_target_dim: 6
+
+  # Multi-scale sparse neighborhoods for multi-scale neighborhood aggregation.
+  topk: [4, 8, 16]
+  use_scaled_similarity: true
+
+  # Spatial-topology priors in the sparse graph.
+  use_spatial: true
+  spatial_sigma: 256.0
+  spatial_weight: 0.20
+  cluster_weight: 0.15
+  boundary_weight: 0.10
+  include_self: true
+
+  # Homoscedastic uncertainty weighting is implemented as model-owned log_vars.
+  use_uncertainty_weighting: true
+
+train:
+  seed: 2021
+  epochs: 200
+  batch_size: 1
+  num_workers: 0
+  lr: 0.0002
+  weight_decay: 0.00001
+  optimizer: Adam
+  scheduler: cosine
+  amp: false
+
+  # standard or pcgrad. PCGrad is slower but useful as an ablation.
+  gradient_strategy: standard
+  stage_ordinal_weight: 0.15
+  survival_alpha: 0.0
+  topology_weight: 0.10
+  best_metric: survival_c_index
+  output_dir: runs
+  # Export one-row-per-slide predictions for downstream analyses.
+  export_predictions: true
+  export_topology: false
+  topology_top_fraction: 0.10

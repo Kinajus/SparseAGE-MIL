@@ -1,0 +1,44 @@
+name: nsclc_sparseage_classification
+task: classification
+
+data:
+  manifest: data/manifests/nsclc_classification.csv
+  root: .
+  id_column: slide_id
+  feature_column: feature_path
+  label_column: label
+  # Optional spatial fields. They can also be stored inside feature .pt files.
+  coordinate_column: coord_path
+  cluster_column: cluster_path
+
+split:
+  fold_column: fold
+  fold: 0
+  n_splits: 5
+
+model:
+  input_dim: 1024
+  embedding_dim: 512
+  attention_dim: 128
+  n_classes: 2
+  topk: 6
+  dropout: 0.25
+  use_scaled_similarity: true
+  use_spatial: true
+  spatial_sigma: 256.0
+  spatial_weight: 0.20
+  cluster_weight: 0.15
+  boundary_weight: 0.10
+
+train:
+  seed: 2021
+  epochs: 200
+  batch_size: 1
+  num_workers: 0
+  lr: 0.0002
+  weight_decay: 0.00001
+  optimizer: Adam
+  scheduler: cosine
+  amp: false
+  best_metric: auc
+  output_dir: runs
